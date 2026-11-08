@@ -8,12 +8,6 @@ nvm install
 nvm use
 ```
 
-Check the active version:
-
-```bash
-node -v   # should be v24.19.0
-```
-
 ## Installation
 
 ```bash
@@ -28,7 +22,7 @@ Development mode
 npm run dev
 ```
 
-Production:
+Production mode
 
 ```bash
 npm start
