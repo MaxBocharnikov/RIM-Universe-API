@@ -1,0 +1,26 @@
+{
+  "name": "rim-universe-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github-personal:MaxBocharnikov/RIM-Universe-API.git"
+  },
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
