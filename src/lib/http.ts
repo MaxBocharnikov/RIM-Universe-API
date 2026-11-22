@@ -3,8 +3,9 @@ import { StatusCodes } from 'http-status-codes';
 
 const JSON_TYPE = 'application/json';
 
-export function getPathname(url?: string): string {
-    return (url ?? '').split('?')[0] ?? '';
+export function getPathname(url: string): string {
+    // split() always returns at least one element, so [0] is never undefined here
+    return (url ?? '').split('?')[0]!;
 }
 
 export function parseCharacterId(pathname: string): string | null {
