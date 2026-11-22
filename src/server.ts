@@ -4,7 +4,7 @@ import { characters, type Character } from './data/characters';
 import {
     getPathname,
     parseCharacterId,
-    readJsonBody,
+    readAndParse,
     sendError,
     sendJson,
 } from './lib/http';
@@ -12,7 +12,7 @@ import { parseCharacterInput, parseCharacterPatch } from './lib/validate';
 import { StatusCodes } from 'http-status-codes';
 
 function findCharacterIndex(id: string): number {
-    return characters.findIndex((c) => c.id === id);
+    return characters.findIndex((character) => character.id === id);
 }
 
 async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -31,19 +31,8 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
         }
 
         if (method === 'POST') {
-            let body: unknown;
-            try {
-                body = await readJsonBody(req);
-            } catch {
-                sendError(res, StatusCodes.BAD_REQUEST, 'Invalid JSON');
-                return;
-            }
-
-            const input = parseCharacterInput(body);
-            if (!input) {
-                sendError(res, StatusCodes.BAD_REQUEST, 'Invalid character data');
-                return;
-            }
+            const input = await readAndParse(req, res, parseCharacterInput);
+            if (!input) return;
 
             const created: Character = { id: randomUUID(), ...input };
             characters.push(created);
@@ -59,80 +48,44 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 
     if (id) {
         const index = findCharacterIndex(id);
-
-        if (method === 'GET') {
-            if (index === -1) {
-                sendError(res, StatusCodes.NOT_FOUND, 'Character not found');
-                return;
-            }
-            sendJson(res, StatusCodes.OK, characters[index]);
+        const character = characters[index];
+        if (index === -1 || !character) {
+            sendError(res, StatusCodes.NOT_FOUND, 'Character not found');
             return;
         }
 
-        if (method === 'PUT') {
-            if (index === -1) {
-                sendError(res, StatusCodes.NOT_FOUND, 'Character not found');
+        switch (method) {
+            case 'GET':
+                sendJson(res, StatusCodes.OK, character);
+                return;
+
+            case 'PUT': {
+                const input = await readAndParse(req, res, parseCharacterInput);
+                if (!input) return;
+
+                characters[index] = { id, ...input };
+                sendJson(res, StatusCodes.OK, characters[index]);
                 return;
             }
 
-            let body: unknown;
-            try {
-                body = await readJsonBody(req);
-            } catch {
-                sendError(res, StatusCodes.BAD_REQUEST, 'Invalid JSON');
+            case 'PATCH': {
+                const patch = await readAndParse(req, res, parseCharacterPatch);
+                if (!patch) return;
+
+                characters[index] = { ...character, ...patch };
+                sendJson(res, StatusCodes.OK, characters[index]);
                 return;
             }
 
-            const input = parseCharacterInput(body);
-            if (!input) {
-                sendError(res, StatusCodes.BAD_REQUEST, 'Invalid character data');
+            case 'DELETE':
+                characters.splice(index, 1);
+                sendJson(res, StatusCodes.NO_CONTENT);
                 return;
-            }
 
-            characters[index] = { id, ...input };
-            sendJson(res, StatusCodes.OK, characters[index]);
-            return;
+            default:
+                sendError(res, StatusCodes.METHOD_NOT_ALLOWED, 'Method not allowed');
+                return;
         }
-
-        if (method === 'PATCH') {
-            const current = characters[index];
-            if (!current || index === -1) {
-                sendError(res, StatusCodes.NOT_FOUND, 'Character not found');
-                return;
-            }
-
-            let body: unknown;
-            try {
-                body = await readJsonBody(req);
-            } catch {
-                sendError(res, StatusCodes.BAD_REQUEST, 'Invalid JSON');
-                return;
-            }
-
-            const patch = parseCharacterPatch(body);
-            if (!patch) {
-                sendError(res, StatusCodes.BAD_REQUEST, 'Invalid patch data');
-                return;
-            }
-
-            characters[index] = { ...current, ...patch };
-            sendJson(res, StatusCodes.OK, characters[index]);
-            return;
-        }
-
-        if (method === 'DELETE') {
-            if (index === -1) {
-                sendError(res, StatusCodes.NOT_FOUND, 'Character not found');
-                return;
-            }
-
-            characters.splice(index, 1);
-            sendJson(res, StatusCodes.NO_CONTENT);
-            return;
-        }
-
-        sendError(res, StatusCodes.METHOD_NOT_ALLOWED, 'Method not allowed');
-        return;
     }
 
     sendError(res, StatusCodes.NOT_FOUND, 'Not found');
