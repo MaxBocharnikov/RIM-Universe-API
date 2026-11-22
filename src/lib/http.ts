@@ -3,8 +3,8 @@ import { StatusCodes } from 'http-status-codes';
 
 const JSON_TYPE = 'application/json';
 
-export function getPathname(url: string | undefined): string {
-    return (url ?? '').split('?')[0] as string;
+export function getPathname(url?: string): string {
+    return (url ?? '').split('?')[0] ?? '';
 }
 
 export function parseCharacterId(pathname: string): string | null {
@@ -12,7 +12,7 @@ export function parseCharacterId(pathname: string): string | null {
     return match?.[1] ?? null;
 }
 
-export function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
+function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
     return new Promise((resolve, reject) => {
         const chunks: Buffer[] = [];
 
@@ -52,4 +52,26 @@ export function sendJson(
 
 export function sendError(res: http.ServerResponse, status: number, message: string): void {
     sendJson(res, status, { error: message });
+}
+
+export async function readAndParse<T>(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    parse: (body: unknown) => T | null,
+): Promise<T | null> {
+    let body: unknown;
+    try {
+        body = await readJsonBody(req);
+    } catch {
+        sendError(res, StatusCodes.BAD_REQUEST, 'Invalid JSON');
+        return null;
+    }
+
+    const parsed = parse(body);
+    if (!parsed) {
+        sendError(res, StatusCodes.BAD_REQUEST, 'Invalid data');
+        return null;
+    }
+
+    return parsed;
 }
